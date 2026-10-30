@@ -1,0 +1,248 @@
+u4
+open hive
+
+CREATE TABLE employees_hive (
+    id INT,
+    name STRING,
+    department STRING,
+    salary INT
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ',;
+
+SHOW TABLES;
+
+exit;
+
+
+
+
+in cloudera
+
+
+1. mysql -u root -p
+2.enter pwd: cloudera
+
+3. 
+
+create database sqoopdb;
+use sqoopdb;
+
+create table employees(
+   id int primary key,
+   name varchar(50),
+   department varchar(50),
+   salary int
+);
+
+4. INSERT INTO employees VALUES
+(1, 'Ravi', 'IT', 40000),
+(2, 'Priya', 'HR', 35000),
+(3, 'Amit', 'IT', 45000),
+(4, 'Neha', 'Finance', 50000),
+(5, 'Kiran', 'HR', 30000);
+
+5. select * from employees;
+6. exit;  (from sql)
+
+in cloudera
+
+Step 1: Test the MySQL connection through Sqoop
+At the Linux terminal, run:
+
+sqoop eval \
+--connect jdbc:mysql://localhost:3306/sqoopdb \
+--username root \
+-P \
+--query "SELECT * FROM employees"
+
+When prompted for the password, enter cloudera and press Enter. The password won't be displayed as you type.
+
+Step 2: Import the data into a new Hive table
+
+sqoop import \
+--connect jdbc:mysql://localhost:3306/sqoopdb \
+--username root \
+-P \
+--table employees \
+--hive-import \
+--create-hive-table \
+--hive-table employees_sqoop \
+-m 1
+
+Enter the MySQL password when prompted.
+
+What the options mean:
+- sqoop import — imports data from the SQL database.
+- --connect — specifies the MySQL database.
+- --username root — specifies the MySQL account.
+- -P — asks you for the password.
+- --table employees — selects the MySQL table.
+- --hive-import — loads the imported data into Hive.
+- --create-hive-table — creates the destination Hive table.
+- --hive-table employees_sqoop — names the destination table.
+- -m 1 — uses one mapper for this small dataset.
+
+Step 3: Verify the import
+Open Hive:
+hive
+
+At the hive> prompt, run:
+SHOW TABLES;
+
+Then:
+SELECT * FROM employees_sqoop;
+
+
+Part B — Export Hive data to your local machine
+
+Step 4: Find the Hive table's HDFS location
+At the hive> prompt, run:
+DESCRIBE FORMATTED employees_sqoop;
+
+Step 5: Exit Hive
+EXIT;
+
+
+Step 6: Create a local folder
+
+Run:
+
+```bash
+mkdir -p ~/sqoop_export
+```
+
+### Step 3: Copy the Hive table data from HDFS
+
+Run this command:
+
+```bash
+hdfs dfs -get /user/hive/warehouse/employees_sqoop ~/sqoop_export/
+```
+
+This copies the data files from HDFS into your local Linux machine.
+
+### Step 4: Verify the copied files
+
+Run:
+
+```bash
+ls -R ~/sqoop_export
+```
+
+You should see a folder named `employees_sqoop` containing a data file such as `000000_0`.
+
+**Part 2 is complete once the file appears.**
+
+---
+
+# Part 3: Export Hive data to MySQL using Sqoop
+
+Next, we'll transfer the Hive records into a MySQL table.
+
+## Step 5: Create a destination table in MySQL
+
+Open MySQL:
+
+```bash
+mysql -u root -p
+```
+
+Enter your password: `cloudera`.
+
+At the `mysql>` prompt, execute these commands one at a time:
+
+```sql
+USE sqoopdb;
+```
+
+Create the destination table:
+
+```sql
+CREATE TABLE employees_export (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    department VARCHAR(50),
+    salary INT
+);
+```
+
+Exit MySQL:
+
+```sql
+EXIT;
+```
+
+**Important:** If you get an error saying `employees_export` already exists, don't drop it. Tell me, and we'll check its contents first.
+
+## Step 6: Prepare the Hive data for export
+
+Open Hive:
+
+```bash
+hive
+```
+
+At the `hive>` prompt, run:
+
+```sql
+INSERT OVERWRITE DIRECTORY '/user/cloudera/sqoop_export_data'
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '\t'
+SELECT id, name, department, salary
+FROM employees_sqoop;
+```
+
+This creates tab-separated data in HDFS for Sqoop to read.
+
+Exit Hive:
+
+```sql
+EXIT;
+```
+
+Verify the data:
+
+```bash
+hdfs dfs -ls /user/cloudera/sqoop_export_data
+```
+
+You should see a file such as `000000_0` or `part-00000`.
+
+## Step 7: Export the data into MySQL
+
+Run this command in the Linux terminal:
+
+```bash
+sqoop export \
+--connect 'jdbc:mysql://localhost:3306/sqoopdb' \
+--driver com.mysql.jdbc.Driver \
+--username root \
+-P \
+--table employees_export \
+--export-dir /user/cloudera/sqoop_export_data \
+--input-fields-terminated-by '\t' \
+-m 1
+```
+
+Enter the MySQL password when prompted.
+
+Sqoop should transfer the Hive records into `employees_export`.
+
+## Step 8: Verify the final result
+
+Open MySQL:
+
+```bash
+mysql -u root -p
+```
+
+Run:
+
+```sql
+USE sqoopdb;
+SELECT * FROM employees_export;
+```
+
+You should see the same employee records you imported into Hive.
+
