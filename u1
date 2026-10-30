@@ -1,0 +1,103 @@
+unit-1 
+A)
+### Step 1: Create the local file
+
+```
+nano sample.txt
+```
+
+Enter this sample data:
+
+```
+1,Kriti,CSE,45
+2,Neha,ECE,56
+3,Jyothi,CE,78
+4,Priya,Mechanical,89
+```
+
+Save using `Ctrl + O`, press `Enter`, and exit using `Ctrl + X`.
+
+### Step 2: Verify the local file
+
+Check that the file exists:
+
+```
+ls
+```
+
+Display its contents:
+
+```
+cat sample.txt
+```
+
+### Step 3: Create the destination directory in HDFS
+
+```
+hdfs dfs -mkdir -p /user/cloudera/bigdata/input/
+```
+
+- `-mkdir` creates a directory in HDFS.
+- `-p` creates any missing parent directories without reporting an error if the directory already exists.
+
+### Step 4: Transfer the local file to HDFS
+
+```
+hdfs dfs -put sample.txt /user/cloudera/bigdata/input/
+```
+
+This copies `sample.txt` from your local Linux home directory into HDFS.
+
+### Step 5: Verify the file in HDFS
+
+```
+hdfs dfs -ls /user/cloudera/bigdata/input/
+```
+
+You should see `sample.txt` listed.
+
+To display its contents directly from HDFS:
+
+```
+hdfs dfs -cat /user/cloudera/bigdata/input/sample.txt
+```
+
+Remember the sequence:
+
+Local file creation → Local file verification → Create HDFS directory → Upload file → Verify HDFS file.
+
+B. Viewing Data Contents, Files and Directories
+4. Display files and directories present in HDFS
+Purpose: To check which files and directories are available in HDFS.
+
+Command:
+hdfs dfs -ls /
+
+
+To list files in the default HDFS directory:
+hdfs dfs -ls
+
+
+To list files in our lab directory:
+hdfs dfs -ls /user/cloudera/bigdata/input
+
+
+Explanation:
+- -ls — Lists files and directories.
+- / — Specifies the HDFS root directory.
+- With no path, the command lists the default HDFS directory, which is commonly /user/cloudera in the Cloudera VM used in your lab. 1 EXPERIMENT -HDFS  commands.docx
+5. Display the contents of a file stored in HDFS
+Purpose: To read and display the data inside a file stored in HDFS.
+
+Command:
+hdfs dfs -cat /user/cloudera/bigdata/input/students.txt
+
+
+C) Step 1: Copy the file from HDFS to local Linux
+hdfs dfs -get /user/cloudera/bigdata/input/sample.txt ~/
+Step 2: Verify the downloaded file
+ls ~/
+
+
+Check its contents:
+cat ~/sample.txt
