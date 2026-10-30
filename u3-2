@@ -1,0 +1,290 @@
+# UNIT-III (b): Data Processing Using Apache Pig
+
+## 1. Aim
+To write Pig Latin scripts to process log files and calculate:
+1. Total page views per hour per day.
+2. Total page views per day.
+3. Total page views for each hour across all days.
+4. Word count using a text file as input.
+
+## 2. Input Dataset
+
+Each log record contains four fields separated by tab characters:
+
+| Field | Description | Example |
+|---|---|---|
+| `site` | Website name | google.com |
+| `hour_of_day` | Hour of the day | 10 |
+| `page_views` | Number of page views | 100 |
+| `data_date` | Date of the record | 2026-01-01 |
+
+Example input:
+
+```text
+google.com    10    100    2026-01-01
+youtube.com   10    150    2026-01-01
+google.com    11    200    2026-01-01
+google.com    10    120    2026-01-02
+youtube.com   11    180    2026-01-02
+```
+
+**Important:** The actual fields must be separated by tab characters, not spaces.
+
+---
+
+
+### Step 1: Create the file
+
+```
+nano simple_logs.txt
+```
+
+### Step 2: Enter sample data
+
+Enter the following values, separating each field with an actual Tab key:
+
+```
+google	10	100	2026-10-28
+google	10	150	2026-10-28
+youtube	11	200	2026-10-28
+google	10	120	2026-10-29
+youtube	11	180	2026-10-29
+```
+
+Save with `Ctrl + O`, press `Enter`, and exit with `Ctrl + X`.
+
+### Step 3: Create the HDFS directory
+
+```
+hdfs dfs -mkdir -p data/pig/simple_logs
+```
+
+### Step 4: Upload your file to HDFS
+
+```
+hdfs dfs -put simple_logs.txt data/pig/simple_logs/
+```
+
+### Step 5: Verify the upload
+
+```
+hdfs dfs -ls data/pig/simple_logs/
+```
+
+To view the file contents:
+
+```
+hdfs dfs -cat data/pig/simple_logs/simple_logs.txt
+```
+
+
+---
+
+# Part B: Calculate Total Views per Hour per Day
+
+### Objective
+Calculate the total page views for each hour on each day, combining all websites.
+
+### Pig Latin program: `hour_day.pig`
+
+```pig
+logs = LOAD 'data/pig/simple_logs'
+USING PigStorage('\t')
+AS (
+    site:chararray,
+    hour_of_day:int,
+    page_views:int,
+    data_date:chararray
+);
+
+grouped_logs = GROUP logs BY (hour_of_day, data_date);
+
+total_views = FOREACH grouped_logs GENERATE
+    group.hour_of_day AS hour,
+    group.data_date AS date,
+    SUM(logs.page_views) AS total_page_views;
+
+DUMP total_views;
+```
+
+### Explanation
+- `LOAD`: Loads log files from HDFS.
+- `PigStorage('\u0001')`: Specifies the input delimiter as instructed by your lab.
+- `GROUP`: Groups records by hour and date.
+- `SUM`: Adds page views for each group.
+- `DUMP`: Displays the results.
+
+### Example output
+
+Using the sample data above:
+
+```text
+(10,2026-01-01,250)
+(11,2026-01-01,200)
+(10,2026-01-02,120)
+(11,2026-01-02,180)
+```
+
+---
+
+# Part C: Calculate Total Views per Day
+
+### Objective
+Calculate the total page views for each date.
+
+### Pig Latin program: `views_per_day.pig`
+
+```pig
+logs = LOAD 'data/pig/simple_logs'
+USING PigStorage('\t')
+AS (
+    site:chararray,
+    hour_of_day:int,
+    page_views:int,
+    data_date:chararray
+);
+
+grouped_logs = GROUP logs BY data_date;
+
+daily_views = FOREACH grouped_logs GENERATE
+    group AS date,
+    SUM(logs.page_views) AS total_page_views;
+
+DUMP daily_views;
+```
+
+### Example output
+
+```text
+(2026-01-01,450)
+(2026-01-02,300)
+```
+
+---
+
+# Part D: Calculate Total Views for Each Hour Across All Days
+
+### Objective
+Find the total page views for each hour, combining records from all dates.
+
+### Pig Latin program: `nano views_per_hour.pig`
+
+```pig
+logs = LOAD 'data/pig/simple_logs'
+USING PigStorage('\t')
+AS (
+    site:chararray,
+    hour_of_day:int,
+    page_views:int,
+    data_date:chararray
+);
+
+grouped_logs = GROUP logs BY hour_of_day;
+
+hourly_views = FOREACH grouped_logs GENERATE
+    group AS hour,
+    SUM(logs.page_views) AS total_page_views;
+
+DUMP hourly_views;
+```
+
+### Example output
+
+```text
+(10,370)
+(11,380)
+```
+
+---
+
+# Part E: Word Count Using Pig Latin
+
+### Objective
+Count the occurrences of each word in a text file.
+
+### Step 1: Create a text file
+
+Create `input.txt` containing:
+
+```text
+hello hadoop
+hello pig
+hadoop pig hello
+```
+
+### Step 2: Upload it to HDFS
+
+```bash
+hdfs dfs -mkdir -p data/pig/wordcount
+hdfs dfs -put input.txt data/pig/wordcount/
+```
+
+### Step 3: Create the Pig Latin script
+
+Save the following as `wordcount.pig`.
+
+```pig
+lines = LOAD 'data/pig/wordcount/input.txt'
+USING TextLoader()
+AS (line:chararray);
+
+words = FOREACH lines GENERATE
+    FLATTEN(TOKENIZE(line)) AS word;
+
+grouped_words = GROUP words BY word;
+
+word_count = FOREACH grouped_words GENERATE
+    group AS word,
+    COUNT(words) AS total_count;
+
+DUMP word_count;
+```
+
+### Expected output
+
+```text
+(hadoop,2)
+(hello,3)
+(pig,2)
+```
+
+### Explanation
+
+- `TextLoader()` reads the input text file line by line.
+- `TOKENIZE()` splits each line into words.
+- `FLATTEN()` creates a separate record for each word.
+- `GROUP` groups identical words.
+- `COUNT` counts occurrences of each word.
+
+---
+
+# Part F: Execute the Pig Programs
+
+Assuming Apache Pig is installed and configured to use Hadoop, run these commands from your terminal.
+
+For total views per hour per day:
+
+```bash
+pig -x mapreduce hour_day.pig
+```
+
+For total views per day:
+
+```bash
+pig -x mapreduce views_per_day.pig
+```
+
+For total views per hour across all days:
+
+```bash
+pig -x mapreduce views_per_hour.pig
+```
+
+For word count:
+
+```bash
+pig -x mapreduce wordcount.pig
+```
+
+The `-x mapreduce` option tells Pig to execute the scripts using Hadoop MapReduce.
+
