@@ -2,5 +2,7 @@ https://blog.devgenius.io/performing-word-count-with-hadoop-a-step-by-step-guide
 
 hadoop fs -cat /user/nielit/output/part-r-00000 | sort -k2 -nr
 
+hadoop fs -cat /user/nielit/output/part-r-00000 | sort -k2,2n
+hadoop fs -cat /user/nielit/output/part-r-00000 | sort -k2,2nr
 
 https://downloads.cloudera.com/demo_vm/virtualbox/cloudera-quickstart-vm-5.13.0-0-virtualbox.zip
